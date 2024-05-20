@@ -18,8 +18,8 @@ WINDOWS_ISO="windows10-ltsc.iso"
 # Nombre de la imagen ISO de VirtIO
 VIRTIO_ISO="virtio-win.iso"
 
-# Tamaño del disco en GB
-DISK_SIZE_GB=20
+# Tamaño del disco en GB (400GB)
+DISK_SIZE_GB=400
 
 # Crear la imagen de disco virtual
 qemu-img create -f raw /dev/sda $((DISK_SIZE_GB * 1024))M
@@ -41,12 +41,12 @@ mount -o loop $VIRTIO_ISO /mnt/virtio
 # Crear la tabla de particiones GPT
 parted /dev/sda mklabel gpt
 
-# Crear la partición EFI de 200MB
-parted /dev/sda mkpart primary fat32 1MiB 200MiB
+# Crear la partición EFI de 500MB
+parted /dev/sda mkpart primary fat32 1MiB 500MiB
 parted /dev/sda set 1 esp on
 
 # Crear la partición para Windows
-parted /dev/sda mkpart primary ntfs 200MiB 100%
+parted /dev/sda mkpart primary ntfs 500MiB 100%
 
 # Formatear las particiones
 mkfs.fat -F32 /dev/sda1
@@ -71,9 +71,6 @@ rsync -av /mnt/virtio/* /mnt/windows/virtio/
 umount /mnt/virtio
 rm -rf /mnt/virtio
 
-# Desmontar la partición de Windows
-umount /mnt/windows
-
 # Instalar GRUB para EFI
 grub-install --target=x86_64-efi --efi-directory=/mnt/windows --boot-directory=/mnt/windows/boot --removable
 
@@ -83,6 +80,9 @@ search --file --set=root /bootmgr
 ntldr /bootmgr
 boot
 EOF
+
+# Desmontar la partición de Windows
+umount /mnt/windows
 
 # Reiniciar el sistema para arrancar desde el disco principal
 reboot
