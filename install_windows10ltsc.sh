@@ -45,7 +45,7 @@ EOF
 
 # Montar la ISO de Windows 10 LTSC y copiar los archivos
 mkdir -p /mnt/iso /mnt/win
-wget -O /mnt/iso/win10.iso https://dn790002.ca.archive.org/0/items/windows-10-enterprise-ltsc-2021-x-64-dvd-esp/Windows_10_enterprise_ltsc_2021_x64_dvd_es-es_51d721ea.iso
+wget -O /mnt/iso/win10.iso https://software-static.download.prss.microsoft.com/sg/download/444969d5-f34g-4e03-ac9d-1f9786c69161/19044.1288.211006-0501.21h2_release_svc_refresh_CLIENT_LTSC_EVAL_x64FRE_es-es.iso
 mount -o loop /mnt/iso/win10.iso /mnt/win
 
 rsync -avz --progress /mnt/win/* /mnt
