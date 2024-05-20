@@ -6,7 +6,7 @@ apt install wimtools -y
 
 # Montar la ISO de virtio
 mkdir -p /mnt/sources/virtio
-mount -o loop /path/to/virtio.iso /mnt/sources/virtio
+mount -o loop /mnt/iso/virtio.iso /mnt/sources/virtio
 
 # Verificar la estructura de la imagen WIM de virtio
 if [ ! -d /mnt/sources/virtio/virtio_drivers ]; then
