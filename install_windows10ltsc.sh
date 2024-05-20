@@ -52,15 +52,21 @@ rsync -avz --progress /mnt/win/* /mnt
 
 # Descargar y montar la ISO de virtio
 wget -O /mnt/iso/virtio.iso https://shorturl.at/lsOU3
-mkdir /mnt/virtio
+mkdir -p /mnt/sources/virtio  # Crear directorio sources/virtio si no existe
 mount -o loop /mnt/iso/virtio.iso /mnt/virtio
 
 rsync -avz --progress /mnt/virtio/* /mnt/sources/virtio
 
-# Actualizar el archivo boot.wim con los drivers virtio
-cd /mnt/sources
+# Crear el archivo cmd.txt con los comandos necesarios
 touch /mnt/sources/cmd.txt
 echo 'add virtio /virtio_drivers' >> /mnt/sources/cmd.txt
+
+# Actualizar el archivo boot.wim con los drivers virtio
 wimlib-imagex update /mnt/sources/boot.wim 2 < /mnt/sources/cmd.txt
 
+# Desmontar las ISOs
+umount /mnt/win
+umount /mnt/virtio
+
 # Reiniciar la máquina
+echo "Instalación finalizada. Reiniciando..."
