@@ -72,7 +72,7 @@ umount /mnt/virtio
 rm -rf /mnt/virtio
 
 # Instalar GRUB para EFI
-grub-install --target=x86_64-efi --efi-directory=/mnt/windows --boot-directory=/mnt/windows/boot --removable
+grub-install --target=x86_64-efi --efi-directory=/mnt/windows --boot-directory=/mnt/windows/boot --removable --no-nvram --uefi-secure-boot
 
 # Crear el archivo de configuración de GRUB
 cat <<EOF > /mnt/windows/boot/grub/grub.cfg
