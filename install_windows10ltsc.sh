@@ -44,18 +44,18 @@ menuentry "Windows 10 LTSC" {
 EOF
 
 # Montar la ISO de Windows 10 LTSC y copiar los archivos
-mkdir /mnt/iso
-wget -O /mnt/iso/win10.iso https://software-static.download.prss.microsoft.com/sg/download/444969d5-f34g-4e03-ac9d-1f9786c69161/19044.1288.211006-0501.21h2_release_svc_refresh_CLIENT_LTSC_EVAL_x64FRE_es-es.iso
+mkdir -p /mnt/iso /mnt/win
+wget -O /mnt/iso/win10.iso https://dn790002.ca.archive.org/0/items/windows-10-enterprise-ltsc-2021-x-64-dvd-esp/Windows_10_enterprise_ltsc_2021_x64_dvd_es-es_51d721ea.iso
 mount -o loop /mnt/iso/win10.iso /mnt/win
 
 rsync -avz --progress /mnt/win/* /mnt
 
 # Descargar y montar la ISO de virtio
+mkdir -p /mnt/iso /mnt/sources/virtio
 wget -O /mnt/iso/virtio.iso https://shorturl.at/lsOU3
-mkdir -p /mnt/sources/virtio  # Crear directorio sources/virtio si no existe
-mount -o loop /mnt/iso/virtio.iso /mnt/virtio
+mount -o loop /mnt/iso/virtio.iso /mnt/sources/virtio
 
-rsync -avz --progress /mnt/virtio/* /mnt/sources/virtio
+rsync -avz --progress /mnt/sources/virtio/* /mnt/sources/virtio
 
 # Crear el archivo cmd.txt con los comandos necesarios
 touch /mnt/sources/cmd.txt
@@ -66,7 +66,7 @@ wimlib-imagex update /mnt/sources/boot.wim 2 < /mnt/sources/cmd.txt
 
 # Desmontar las ISOs
 umount /mnt/win
-umount /mnt/virtio
+umount /mnt/sources/virtio
 
 # Reiniciar la máquina
 echo "Instalación finalizada. Reiniciando..."
