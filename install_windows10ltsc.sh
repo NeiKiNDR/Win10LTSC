@@ -31,8 +31,9 @@ qemu-img create -f raw $DISK_IMG $DISK_SIZE
 # Descargar la imagen ISO de los controladores VirtIO
 wget -O $VIRTIO_ISO $VIRTIO_ISO_URL
 
-# Iniciar la instalación de Windows en una máquina virtual
-qemu-system-x86_64 -enable-kvm -m 4G -cpu host \
+# Iniciar la instalación de Windows en una máquina virtual sin KVM, pero con soporte para AMD EPYC
+qemu-system-x86_64 -cpu EPYC \
+    -m 4G \
     -drive file=$DISK_IMG,format=raw \
     -cdrom $WINDOWS_ISO \
     -boot d \
