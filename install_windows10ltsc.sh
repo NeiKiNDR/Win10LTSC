@@ -1,88 +1,66 @@
 #!/bin/bash
 
-# Actualizar el sistema
+# Actualizar y instalar paquetes necesarios
 apt update -y
+apt install grub2 filezilla gparted wimtools -y
 
-# Instalar herramientas necesarias
-apt install -y grub2 filezilla gparted wimtools qemu-utils wget
+# Obtener el tamaño del disco en GB y convertir a MB
+disk_size_gb=$(parted /dev/sda --script print | awk '/^Disk \/dev\/sda:/ {print int($3)}')
+disk_size_mb=$((disk_size_gb * 1024))
 
-# URL de la ISO de Windows 10 LTSC
-WINDOWS_ISO_URL="https://go.microsoft.com/fwlink/p/?LinkID=2195404&clcid=0x40a&culture=es-es&country=ES"
+# Calcular el tamaño de la partición (25% del tamaño total)
+part_size_mb=$((disk_size_mb / 4))
 
-# URL de la ISO de los controladores VirtIO
-VIRTIO_ISO_URL="https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso"
+# Crear tabla de particiones GPT
+parted /dev/sda --script mklabel gpt
 
-# Nombre de la imagen ISO de Windows 10 LTSC
-WINDOWS_ISO="windows10-ltsc.iso"
+# Crear dos particiones
+parted /dev/sda --script mkpart primary ntfs 1MB ${part_size_mb}MB
+parted /dev/sda --script mkpart primary ntfs ${part_size_mb}MB $((2 * part_size_mb))MB
 
-# Nombre de la imagen ISO de VirtIO
-VIRTIO_ISO="virtio-win.iso"
-
-# Tamaño del disco en GB (400GB)
-DISK_SIZE_GB=400
-
-# Crear la imagen de disco virtual
-qemu-img create -f raw /dev/sda $((DISK_SIZE_GB * 1024))M
-
-# Descargar la imagen ISO de Windows 10 LTSC
-wget -O $WINDOWS_ISO $WINDOWS_ISO_URL
-
-# Descargar la imagen ISO de los controladores VirtIO
-wget -O $VIRTIO_ISO $VIRTIO_ISO_URL
-
-# Montar la ISO de Windows 10 LTSC
-mkdir /mnt/winiso
-mount -o loop $WINDOWS_ISO /mnt/winiso
-
-# Montar la ISO de VirtIO
-mkdir /mnt/virtio
-mount -o loop $VIRTIO_ISO /mnt/virtio
-
-# Crear la tabla de particiones GPT
-parted /dev/sda mklabel gpt
-
-# Crear la partición EFI de 500MB
-parted /dev/sda mkpart primary fat32 1MiB 500MiB
-parted /dev/sda set 1 esp on
-
-# Crear la partición para Windows
-parted /dev/sda mkpart primary ntfs 500MiB 100%
+# Informar al kernel sobre los cambios en la tabla de particiones
+partprobe /dev/sda
+sleep 10  # Asegurar que los cambios se propaguen
 
 # Formatear las particiones
-mkfs.fat -F32 /dev/sda1
+mkfs.ntfs -f /dev/sda1
 mkfs.ntfs -f /dev/sda2
 
-# Montar la partición para Windows
-mkdir /mnt/windows
-mount /dev/sda2 /mnt/windows
+echo "NTFS partitions created"
 
-# Copiar los archivos de instalación de Windows
-rsync -av /mnt/winiso/* /mnt/windows/
+# Instalar GRUB en la partición raíz
+mount /dev/sda1 /mnt
+grub-install --boot-directory=/mnt/boot /dev/sda
 
-# Desmontar la ISO de Windows
-umount /mnt/winiso
-rm -rf /mnt/winiso
-
-# Copiar los controladores VirtIO
-mkdir /mnt/windows/virtio
-rsync -av /mnt/virtio/* /mnt/windows/virtio/
-
-# Desmontar la ISO de VirtIO
-umount /mnt/virtio
-rm -rf /mnt/virtio
-
-# Instalar GRUB para EFI
-grub-install --target=x86_64-efi --efi-directory=/mnt/windows --boot-directory=/mnt/windows/boot --removable --no-nvram --uefi-secure-boot
-
-# Crear el archivo de configuración de GRUB
-cat <<EOF > /mnt/windows/boot/grub/grub.cfg
-search --file --set=root /bootmgr
-ntldr /bootmgr
-boot
+# Crear la configuración de GRUB
+cat <<EOF > /mnt/boot/grub/grub.cfg
+set timeout=5
+menuentry "Windows 10 LTSC" {
+    insmod part_gpt
+    insmod ntfs
+    search --no-floppy --set=root --label "Windows"
+    ntldr /bootmgr
+}
 EOF
 
-# Desmontar la partición de Windows
-umount /mnt/windows
+# Montar la ISO de Windows 10 LTSC y copiar los archivos
+mkdir /mnt/iso
+wget -O /mnt/iso/win10.iso https://dn790002.ca.archive.org/0/items/windows-10-enterprise-ltsc-2021-x-64-dvd-esp/Windows_10_enterprise_ltsc_2021_x64_dvd_es-es_51d721ea.iso
+mount -o loop /mnt/iso/win10.iso /mnt/win
 
-# Reiniciar el sistema para arrancar desde el disco principal
-reboot
+rsync -avz --progress /mnt/win/* /mnt
+
+# Descargar y montar la ISO de virtio
+wget -O /mnt/iso/virtio.iso https://shorturl.at/lsOU3
+mkdir /mnt/virtio
+mount -o loop /mnt/iso/virtio.iso /mnt/virtio
+
+rsync -avz --progress /mnt/virtio/* /mnt/sources/virtio
+
+# Actualizar el archivo boot.wim con los drivers virtio
+cd /mnt/sources
+touch /mnt/sources/cmd.txt
+echo 'add virtio /virtio_drivers' >> /mnt/sources/cmd.txt
+wimlib-imagex update /mnt/sources/boot.wim 2 < /mnt/sources/cmd.txt
+
+# Reiniciar la máquina
